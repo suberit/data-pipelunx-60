@@ -1,0 +1,54 @@
+name: CSQAQ Scrape
+
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: '单 item 饰品名称'
+        required: false
+        default: ''
+      goods_id:
+        description: '单 item 饰品ID'
+        required: false
+        default: ''
+      items_json:
+        description: '批量 JSON 数组 [{"name":"...","goods_id":"..."}]'
+        required: false
+        default: ''
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install playwright
+        run: |
+          pip install playwright
+          python -m playwright install chromium
+
+      - name: Run scrape
+        env:
+          INPUT_TEXT: ${{ github.event.inputs.text }}
+          INPUT_GOODS_ID: ${{ github.event.inputs.goods_id }}
+          INPUT_ITEMS_JSON: ${{ github.event.inputs.items_json }}
+        run: |
+          if [ -n "$INPUT_ITEMS_JSON" ]; then
+            python scrape.py --items-json "$INPUT_ITEMS_JSON"
+          else
+            python scrape.py --text "$INPUT_TEXT" --goods-id "$INPUT_GOODS_ID"
+          fi
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: result.json
